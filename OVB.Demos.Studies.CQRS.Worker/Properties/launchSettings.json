@@ -1,0 +1,11 @@
+﻿{
+  "profiles": {
+    "OVB.Demos.Studies.CQRS.Worker": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
