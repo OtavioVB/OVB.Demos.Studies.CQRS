@@ -1,13 +1,12 @@
-﻿namespace OVB.Demos.Studies.CQRS.Domain;
+﻿using ProtoBuf;
 
+namespace OVB.Demos.Studies.CQRS.Domain;
+
+[ProtoContract()]
  public class Account
 {
-    public Account(Guid identifier, string name)
-    {
-        Identifier = identifier;
-        Name = name;
-    }
-
-    public Guid Identifier { get; set; }
-    public string Name { get; set; }
+    [ProtoMember(1)]
+    public string? Identifier { get; set; }
+    [ProtoMember(2)]
+    public string? Name { get; set; }
 }

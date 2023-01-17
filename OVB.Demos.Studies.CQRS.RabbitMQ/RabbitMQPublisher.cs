@@ -7,6 +7,7 @@ public class RabbitMQPublisher
 {
     public void Public(byte[] message)
     {
+        Console.WriteLine(DateTime.UtcNow.ToString());
         var factory = new ConnectionFactory()
         {
             HostName = "localhost",
@@ -18,7 +19,7 @@ public class RabbitMQPublisher
             {
                 channel.QueueDeclare(
                     queue: "CQRS_Synchronism", // nome da fila
-                    durable: false, // permitir a fila permanecer ativa após o servidor ser reiniciado
+                    durable: true, // permitir a fila permanecer ativa após o servidor ser reiniciado
                     exclusive: false, // acessar apenas pela conexão atual
                     autoDelete: true, // deletar automaticamente após a fila ser consumida
                     arguments: null);

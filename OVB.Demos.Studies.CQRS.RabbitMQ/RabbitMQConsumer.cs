@@ -5,7 +5,7 @@ namespace OVB.Demos.Studies.CQRS.RabbitMQ;
 
 public class RabbitMQConsumer
 {
-    public byte[] Consume()
+    public byte[]? Consume()
     {
         var factory = new ConnectionFactory()
         {
@@ -26,10 +26,7 @@ public class RabbitMQConsumer
 
                 var consumer = new EventingBasicConsumer(channel); // Solicitação da entrada das mensagens de forma assíncrona
 
-                byte[] message = new byte[]
-                {
-
-                };
+                byte[]? message = null;
 
                 consumer.Received += (model, ea) =>
                 {

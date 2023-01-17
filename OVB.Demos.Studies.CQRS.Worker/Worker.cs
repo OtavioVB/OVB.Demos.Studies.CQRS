@@ -1,33 +1,64 @@
 using MySql.Data.MySqlClient;
 using OVB.Demos.Studies.CQRS.Domain;
-using OVB.Demos.Studies.CQRS.Infrascructure.Data;
-using OVB.Demos.Studies.CQRS.Infrascructure.Data.Repositories;
-using OVB.Demos.Studies.CQRS.RabbitMQ;
 using ProtoBuf;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Data.SQLite;
+using System.Security.Policy;
+using System.Text;
 
 namespace OVB.Demos.Studies.CQRS.Worker;
 
 public class Worker : BackgroundService
 {
-    private readonly AccountRepository _accountRepository = new AccountRepository(new DataConnection(new MySqlConnection("Server=localhost;Database=cqrs;Uid=root;Pwd=Lu45139786__;")));
-    private RabbitMQConsumer _rabbitMQConsumer = new RabbitMQConsumer();
-
-    public Worker()
-    {
-
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        var factory = new ConnectionFactory()
         {
-            var message = _rabbitMQConsumer.Consume();
-            var readonlyMemory = new ReadOnlyMemory<byte>(message);
-            var account = Serializer.Deserialize<Account>(readonlyMemory);
+            HostName = "localhost",
+        };
+        
+        using (var connectionRbmq = factory.CreateConnection())
+        {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                using (var channel = connectionRbmq.CreateModel())
+                {
+                    channel.QueueDeclare(
+                    queue: "CQRS_Synchronism", // nome da fila
+                    durable: true, // permitir a fila permanecer ativa após o servidor ser reiniciado
+                    exclusive: false, // acessar apenas pela conexão atual
+                    autoDelete: true, // deletar automaticamente após a fila ser consumida
+                    arguments: null);
 
-            await _accountRepository.CreateAsync(account);
 
-            await Task.Delay(1000, stoppingToken);
-        }
+                    var consumer = new EventingBasicConsumer(channel); // Solicitação da entrada das mensagens de forma assíncrona
+                    
+                    consumer.Received += (model, ea) =>
+                    {
+                        var body = ea.Body.ToArray();
+                        using var readonlyMemory = new MemoryStream(body);
+                        var account = Serializer.Deserialize<Account>(readonlyMemory);
+
+                        SQLiteConnection connection = new SQLiteConnection($"Data source={Path.Combine(AppContext.BaseDirectory, "cqrs.db")}");
+                        connection.Open();
+
+                        var command = connection.CreateCommand();
+
+                        command.CommandText = "INSERT INTO Accounts (Identifier, Name) VALUES (@Identifier, @Name)";
+                        command.Parameters.AddWithValue("@Identifier", account.Identifier);
+                        command.Parameters.AddWithValue("@Name", account.Name);
+                        command.ExecuteNonQuery();
+
+                    }; // recebe a mensagem da fila converte para string e imprime no console
+
+                    channel.BasicConsume(queue: "CQRS_Synchronism", autoAck: true, consumer: consumer);
+                    Console.WriteLine(DateTime.UtcNow.ToString());
+
+                }
+
+                await Task.Delay(1000);
+            }    
+       }
     }
 }
